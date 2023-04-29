@@ -124,6 +124,7 @@ def get_model_filename(character_dir):
 
 def get_speaker(character):
     # It is assumed that the config.json file only has a single speaker within it.
+    # todo: add an option to hay_say_ui for selecting a speaker and then select that speaker here.
     character_dir = get_model_path(ARCHITECTURE_NAME, character)
     config_filename = get_config_filename(character_dir)
     with open(config_filename, 'r') as file:
