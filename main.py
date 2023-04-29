@@ -18,6 +18,8 @@ OUTPUT_COPY_FOLDER = os.path.join(ARCHITECTURE_ROOT, 'results')
 INFERENCE_TEMPLATE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main_template.py')
 INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main.py')
 
+INFERENCE_CODE_PATH_FOR_VEC768_LAYER12 = os.path.join(ROOT_DIR, 'so_vits_svc_4_Vec768-Layer12', 'inference_main.py')
+
 PYTHON_EXECUTABLE = os.path.join(ROOT_DIR, '.venvs', 'so_vits_svc_4', 'bin', 'python')
 
 app = Flask(__name__)
@@ -123,16 +125,39 @@ def get_model_filename(character_dir):
 
 
 def get_speaker(character):
-    # It is assumed that the config.json file only has a single speaker within it.
-    # todo: add an option to hay_say_ui for selecting a speaker and then select that speaker here.
     character_dir = get_model_path(ARCHITECTURE_NAME, character)
     config_filename = get_config_filename(character_dir)
     with open(config_filename, 'r') as file:
         config_json = json.load(file)
     speaker_dict = config_json['spk']
-    reverse_lookup = {speaker_dict[key]: key for key in speaker_dict.keys()}
-    first_speaker = reverse_lookup[0]
-    return first_speaker
+    speaker = get_speaker_key(character_dir, speaker_dict)
+    return speaker
+
+
+def get_speaker_key(character_dir, speaker_dict):
+    all_speakers = speaker_dict.keys()
+    if len(all_speakers) == 1:
+        return list(all_speakers)[0]
+    else:
+        selected_speaker = get_speaker_from_speaker_config(character_dir)
+        if selected_speaker not in all_speakers:
+            raise Exception("The key \"" + selected_speaker + "\", from speaker.json, not found in config.json. "
+                                                              "Expecting one of: " + str(list(all_speakers)))
+        else:
+            return selected_speaker
+
+
+def get_speaker_from_speaker_config(character_dir):
+    potential_json_path = os.path.join(character_dir, 'speaker.json')
+    if not os.path.isfile(potential_json_path):
+        raise Exception("speaker.json not found! If config.json has more than one speaker, then you must add a "
+                        "speaker.json file to the character folder which specifies the desired speaker. The contents "
+                        "of speaker.json should be a single entry in the following format: "
+                        "{\"speaker\": <desired speaker name>}")
+    else:
+        with open(potential_json_path, 'r') as file:
+            speaker_selector = json.load(file)
+        return speaker_selector['speaker']
 
 
 def copy_input_audio(input_filename_sans_extension):
@@ -148,13 +173,24 @@ def copy_input_audio(input_filename_sans_extension):
 def execute_program(input_filename_sans_extension, character, semitone_pitch):
     # todo: redirect stdout to a log file.
     model_path, config_path = get_model_and_config_paths(character)
-    subprocess.run([PYTHON_EXECUTABLE, INFERENCE_CODE_PATH,
+    inference_path = determine_inference_path(config_path)
+    subprocess.run([PYTHON_EXECUTABLE, inference_path,
                     '-m', model_path,
                     '-c', config_path,
                     '-n', input_filename_sans_extension + CACHE_EXTENSION,
                     '-t', str(semitone_pitch),
                     '-s', get_speaker(character)
                     ])
+
+
+def determine_inference_path(config_path):
+    # If it looks like the model was trained using the 4.0-Vec768-Layer12 branch, then use that code. Otherwise, use the
+    # main 4.0 branch.
+    inference_path = INFERENCE_CODE_PATH
+    with open(config_path, 'r') as file:
+        if 'contentvec_final_proj' in json.load(file).get('data').keys():
+            inference_path = INFERENCE_CODE_PATH_FOR_VEC768_LAYER12
+    return inference_path
 
 
 def copy_output(output_filename_sans_extension):
