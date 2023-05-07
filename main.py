@@ -30,9 +30,11 @@ def generate() -> (str, int):
     code = 200
     message = ""
     try:
-        input_filename_sans_extension, character, semitone_pitch, output_filename_sans_extension = parse_inputs()
+        input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length, crossfade_length, \
+            character_likeness, reduce_hoarseness, apply_nsf_hifigan, output_filename_sans_extension = parse_inputs()
         copy_input_audio(input_filename_sans_extension)
-        execute_program(input_filename_sans_extension, character, semitone_pitch)
+        execute_program(input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length,
+                        crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan,)
         copy_output(output_filename_sans_extension)
         clean_up(get_temp_files())
     except BadInputException:
@@ -52,39 +54,47 @@ def generate() -> (str, int):
 
 
 def parse_inputs():
-    # todo: add the optional parameters "auto_pitch_correction", "cluster_model_path" (?), and "cluster_infer_ratio" (?)
+    # todo: check the types of the new parameters. Better yet, find a good library that will do all of this parsing.
     check_for_missing_keys()
     input_filename_sans_extension = request.json['Inputs']['User Audio']
     character = request.json['Options']['Character']
-    semitone_pitch = request.json['Options']['Semitone Pitch']
+    pitch_shift = request.json['Options']['Pitch Shift']
+    predict_pitch = request.json['Options']['Predict Pitch']
+    slice_length = request.json['Options']['Slice Length']
+    crossfade_length = request.json['Options']['Cross-Fade Length']
+    character_likeness = request.json['Options']['Character Likeness']
+    reduce_hoarseness = request.json['Options']['Reduce Hoarseness']
+    apply_nsf_hifigan = request.json['Options']['Apply nsf_hifigan']
     output_filename_sans_extension = request.json['Output File']
-    check_types(input_filename_sans_extension, character, semitone_pitch, output_filename_sans_extension)
-    return input_filename_sans_extension, character, semitone_pitch, output_filename_sans_extension
-
+    check_types(input_filename_sans_extension, character, pitch_shift, output_filename_sans_extension)
+    return input_filename_sans_extension, character, pitch_shift, predict_pitch, float(slice_length), \
+        float(crossfade_length), float(character_likeness), reduce_hoarseness, apply_nsf_hifigan, \
+        output_filename_sans_extension
 
 def check_for_missing_keys():
+    # todo: check for the new parameters. Better yet, find a good library that will do all of this parsing.
     missing_user_audio = ('Inputs' not in request.json.keys()) or ('User Audio' not in request.json['Inputs'].keys())
     missing_character = ('Options' not in request.json.keys()) or ('Character' not in request.json['Options'].keys())
-    missing_semitone_pitch = ('Options' not in request.json.keys()) \
-        or ('Semitone Pitch' not in request.json['Options'].keys())
+    missing_pitch_shift = ('Options' not in request.json.keys()) \
+        or ('Pitch Shift' not in request.json['Options'].keys())
     missing_output_filename = 'Output File' not in request.json.keys()
-    if missing_user_audio or missing_character or missing_semitone_pitch or missing_output_filename:
+    if missing_user_audio or missing_character or missing_pitch_shift or missing_output_filename:
         message = ('Missing "User Audio" \n' if missing_user_audio else '') \
                 + ('Missing "Character" \n' if missing_character else '') \
-                + ('Missing "Semitone Pitch" \n' if missing_semitone_pitch else '') \
+                + ('Missing "Pitch Shift" \n' if missing_pitch_shift else '') \
                 + ('Missing "Output File" +n' if missing_output_filename else '')
         raise BadInputException(message)
 
 
-def check_types(input_filename_sans_extension, character, semitone_pitch, output_filename):
+def check_types(input_filename_sans_extension, character, pitch_shift, output_filename):
     wrong_type_user_audio = not isinstance(input_filename_sans_extension, str)
     wrong_type_character = not isinstance(character, str)
-    wrong_type_semitone_pitch = not isinstance(semitone_pitch, int)
+    wrong_type_pitch_shift = not isinstance(pitch_shift, int)
     wrong_type_output_filename = not isinstance(output_filename, str)
-    if wrong_type_user_audio or wrong_type_character or wrong_type_semitone_pitch or wrong_type_output_filename:
+    if wrong_type_user_audio or wrong_type_character or wrong_type_pitch_shift or wrong_type_output_filename:
         message = ('"User Audio" should be a string \n' if wrong_type_user_audio else '') \
                 + ('"Character" should be a string \n' if wrong_type_character else '') \
-                + ('"Semitone Pitch" should be an int \n' if wrong_type_semitone_pitch else '') \
+                + ('"Pitch Shift" should be an int \n' if wrong_type_pitch_shift else '') \
                 + ('"Output File" should be a string \n' if wrong_type_output_filename else '')
         raise BadInputException(message)
 
@@ -133,6 +143,19 @@ def get_speaker(character):
     speaker = get_speaker_key(character_dir, speaker_dict)
     return speaker
 
+def get_cluster_model_path(character):
+    # todo: Allow for the possibility of multiple kmeans models
+    character_dir = get_model_path(ARCHITECTURE_NAME, character)
+    potential_names = [file for file in os.listdir(character_dir) if file.startswith('kmeans')]
+    if len(potential_names) == 0:
+        raise Exception('Cluster model was not found! Expected a file with the name kmeans_<number>.pt in '
+                        + character_dir)
+    if len(potential_names) > 1:
+        raise Exception('Too many cluster models found! Expected only one file with the name kmeans_<number>.pt in '
+                        + character_dir)
+    else:
+        return os.path.join(character_dir, potential_names[0])
+
 
 def get_speaker_key(character_dir, speaker_dict):
     all_speakers = speaker_dict.keys()
@@ -170,18 +193,33 @@ def copy_input_audio(input_filename_sans_extension):
         raise Exception("Unable to copy file from Hay Say's audio cache to so_vits_svc_4's raw directory.") from e
 
 
-def execute_program(input_filename_sans_extension, character, semitone_pitch):
+def execute_program(input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length,
+                    crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan,):
     # todo: redirect stdout to a log file.
     model_path, config_path = get_model_and_config_paths(character)
     inference_path = determine_inference_path(config_path)
-    subprocess.run([PYTHON_EXECUTABLE, inference_path,
-                    '-m', model_path,
-                    '-c', config_path,
-                    '-n', input_filename_sans_extension + CACHE_EXTENSION,
-                    '-t', str(semitone_pitch),
-                    '-s', get_speaker(character)
-                    ])
 
+    # The arguments parser for the Vec768_Layer12 branch requires that you pass a boolean to the true/false arguments
+    superfluous_true = 'True' if inference_path == INFERENCE_CODE_PATH_FOR_VEC768_LAYER12 else None
+
+    arguments = [
+        # Required Parameters
+        '--model_path', model_path,
+        '--config_path', config_path,
+        '--clean_names', input_filename_sans_extension + CACHE_EXTENSION,
+        '--trans', str(pitch_shift),
+        '--spk_list', get_speaker(character),
+        # Optional Parameters
+        *(['--auto_predict_f0', superfluous_true] if predict_pitch else [None, None]),
+        *(['--clip', str(slice_length)] if slice_length > 0 else [None, None]),
+        *(['--linear_gradient', str(crossfade_length)] if slice_length > 0 else [None, None]),
+        *(['--cluster_model_path', get_cluster_model_path(character)] if character_likeness > 0 else [None, None]),
+        *(['--cluster_infer_ratio', str(character_likeness)] if character_likeness > 0 else [None, None]),
+        *(['--f0_mean_pooling', superfluous_true] if reduce_hoarseness else [None, None]),
+        *(['--enhance', superfluous_true] if apply_nsf_hifigan else [None, None])
+    ]
+    arguments = [argument for argument in arguments if argument] # Removes all "None" objects in the list.
+    subprocess.run([PYTHON_EXECUTABLE, inference_path, *arguments])
 
 def determine_inference_path(config_path):
     # If it looks like the model was trained using the 4.0-Vec768-Layer12 branch, then use that code. Otherwise, use the

@@ -15,12 +15,13 @@ RUN apt-get update && apt-get install -y \
     python3.9-venv \
     wget \
     portaudio19-dev \
-    libsndfile1
+    libsndfile1 \
+    unzip
 
 # todo: Is there a better way to refer to the home directory (~)?
 ARG HOME_DIR=/root
 
-# download so_vits_svc_4 and checkout a specific commit that is known to work with this docker 
+# download so_vits_svc_4 and checkout a specific commit that is known to work with this docker
 # file and with Hay Say
 RUN git clone -b 4.0 --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4
 WORKDIR $HOME_DIR/hay_say/so_vits_svc_4
@@ -35,7 +36,7 @@ RUN git reset --hard 52c5ea8c46a068794db1001ca08acde3711d7c90
 RUN python3.8 -m venv ~/hay_say/.venvs/so_vits_svc_4; \
     python3.9 -m venv ~/hay_say/.venvs/so_vits_svc_4_server
 
-# Python virtual environments do not come with wheel, so we must install it. Upgrade pip while 
+# Python virtual environments do not come with wheel, so we must install it. Upgrade pip while
 # we're at it to handle modules that use PEP 517
 RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --no-cache-dir --upgrade pip wheel; \
     ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install --no-cache-dir --upgrade pip wheel
@@ -44,9 +45,14 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --no-cache-dir --upgrade pip 
 RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --no-cache-dir -r ~/hay_say/so_vits_svc_4/requirements.txt --extra-index-url https://download.pytorch.org/whl/cu113
 
 # Download the pre-trained Hubert model checkpoint
-# Note: the wget link below consistenly fails after downloading 1 GB, so I acquired the file elsewhere and am using a COPY statement instead.
+# Note: the wget link below consistently fails after downloading 1 GB, so I acquired the file elsewhere and am using a COPY statement instead.
 # RUN wget hubert/ http://obs.cstcloud.cn/share/obs/sankagenkeshi/checkpoint_best_legacy_500.pt --directory-prefix=/root/hay_say/so_vits_svc_4/hubert/
 COPY checkpoint_best_legacy_500.pt $HOME_DIR/hay_say/so_vits_svc_4/hubert/
+
+# Download the NSF_HiFiGan model
+RUN wget https://github.com/openvpi/vocoders/releases/download/nsf-hifigan-v1/nsf_hifigan_20221211.zip --directory-prefix=/root/hay_say/so_vits_svc_4/pretrain/nsf_hifigan && \
+    unzip -j ~/hay_say/so_vits_svc_4/pretrain/nsf_hifigan/nsf_hifigan_20221211.zip -d ~/hay_say/so_vits_svc_4/pretrain/nsf_hifigan/ && \
+    rm ~/hay_say/so_vits_svc_4/pretrain/nsf_hifigan/nsf_hifigan_20221211.zip
 
 # Download the Hay Say Interface code and install its dependencies
 RUN git clone https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/ && \
