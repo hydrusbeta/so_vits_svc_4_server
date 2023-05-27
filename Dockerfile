@@ -27,9 +27,9 @@ RUN git clone -b 4.0 --single-branch -q https://github.com/svc-develop-team/so-v
 WORKDIR $HOME_DIR/hay_say/so_vits_svc_4
 RUN git reset --hard 489937389cb3c4b123de47582e7d1060497870f9
 
-# Also download the 4.0-Vec768-Layer12 branch for models that require it
-RUN git clone -b 4.0-Vec768-Layer12 --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4_Vec768-Layer12
-WORKDIR $HOME_DIR/hay_say/so_vits_svc_4_Vec768-Layer12
+# Also download the 4.1-Stable branch for models that require it
+RUN git clone -b 4.1-Stable --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4_dot_1_stable
+WORKDIR $HOME_DIR/hay_say/so_vits_svc_4_dot_1_stable
 RUN git reset --hard 52c5ea8c46a068794db1001ca08acde3711d7c90
 
 # Create virtual environments for so-vits-svc 4.0 and Hay Say's so_vits_svc_4_server

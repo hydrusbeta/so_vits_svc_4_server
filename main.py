@@ -18,7 +18,7 @@ OUTPUT_COPY_FOLDER = os.path.join(ARCHITECTURE_ROOT, 'results')
 INFERENCE_TEMPLATE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main_template.py')
 INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main.py')
 
-INFERENCE_CODE_PATH_FOR_VEC768_LAYER12 = os.path.join(ROOT_DIR, 'so_vits_svc_4_Vec768-Layer12', 'inference_main.py')
+INFERENCE_CODE_PATH_FOR_4_DOT_1_STABLE = os.path.join(ROOT_DIR, 'so_vits_svc_4_dot_1_stable', 'inference_main.py')
 
 PYTHON_EXECUTABLE = os.path.join(ROOT_DIR, '.venvs', 'so_vits_svc_4', 'bin', 'python')
 
@@ -199,8 +199,8 @@ def execute_program(input_filename_sans_extension, character, pitch_shift, predi
     model_path, config_path = get_model_and_config_paths(character)
     inference_path = determine_inference_path(config_path)
 
-    # The arguments parser for the Vec768_Layer12 branch requires that you pass a boolean to the true/false arguments
-    superfluous_true = 'True' if inference_path == INFERENCE_CODE_PATH_FOR_VEC768_LAYER12 else None
+    # The arguments parser for the 4.1-Stable branch requires that you pass a boolean to the true/false arguments
+    superfluous_true = 'True' if inference_path == INFERENCE_CODE_PATH_FOR_4_DOT_1_STABLE else None
 
     arguments = [
         # Required Parameters
@@ -222,12 +222,11 @@ def execute_program(input_filename_sans_extension, character, pitch_shift, predi
     subprocess.run([PYTHON_EXECUTABLE, inference_path, *arguments])
 
 def determine_inference_path(config_path):
-    # If it looks like the model was trained using the 4.0-Vec768-Layer12 branch, then use that code. Otherwise, use the
-    # main 4.0 branch.
+    # If it looks like the model was trained using the 4.1 branch, then use that code. Otherwise, use the 4.0 branch.
     inference_path = INFERENCE_CODE_PATH
     with open(config_path, 'r') as file:
         if 'contentvec_final_proj' in json.load(file).get('data').keys():
-            inference_path = INFERENCE_CODE_PATH_FOR_VEC768_LAYER12
+            inference_path = INFERENCE_CODE_PATH_FOR_4_DOT_1_STABLE
     return inference_path
 
 
