@@ -98,8 +98,10 @@ RUN git reset --hard 301c67b3175bf00de7bfaf26d2ab65123e3ca3c4
 # Move the NSF_HiFiGan model to the expected directory.
 RUN mv /root/hay_say/temp_downloads/nsf_hifigan/* ~/hay_say/so_vits_svc_4/pretrain/nsf_hifigan/
 
-# Move the pre-trained Hubert model to the expected directory.
-RUN mv /root/hay_say/temp_downloads/hubert/* ~/hay_say/so_vits_svc_4/hubert
+# Move the pre-trained Hubert model to the expected directories. The 4.1-Stable branch expects it in the /pretrain
+# directory and the 4.0 branch expects it in the /hubert directory.
+RUN mv /root/hay_say/temp_downloads/hubert/checkpoint_best_legacy_500.pt ~/hay_say/so_vits_svc_4/hubert/ &&\
+    ln -s ~/hay_say/so_vits_svc_4/hubert/checkpoint_best_legacy_500.pt ~/hay_say/so_vits_svc_4/pretrain/
 
 # Download the Hay Say Interface code
 RUN git clone https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
