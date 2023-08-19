@@ -86,7 +86,7 @@ EXPOSE 6576
 
 # download so_vits_svc_4 and checkout a specific commit that is known to work with this docker
 # file and with Hay Say
-RUN git clone -b 4.0 --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4
+RUN git clone -b Moe-SVC --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4
 WORKDIR $HOME_DIR/hay_say/so_vits_svc_4
 RUN git reset --hard 153083eca42c3d17b77e20821724eced1cc49c40
 
