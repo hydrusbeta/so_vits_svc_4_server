@@ -31,10 +31,11 @@ def generate() -> (str, int):
     message = ""
     try:
         input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length, crossfade_length, \
-            character_likeness, reduce_hoarseness, apply_nsf_hifigan, output_filename_sans_extension = parse_inputs()
+            character_likeness, reduce_hoarseness, apply_nsf_hifigan, noise_scale, output_filename_sans_extension \
+            = parse_inputs()
         copy_input_audio(input_filename_sans_extension)
         execute_program(input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length,
-                        crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan,)
+                        crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan, noise_scale)
         copy_output(output_filename_sans_extension)
         clean_up(get_temp_files())
     except BadInputException:
@@ -65,10 +66,11 @@ def parse_inputs():
     character_likeness = request.json['Options']['Character Likeness']
     reduce_hoarseness = request.json['Options']['Reduce Hoarseness']
     apply_nsf_hifigan = request.json['Options']['Apply nsf_hifigan']
+    noise_scale = request.json['Options']['Noise Scale']
     output_filename_sans_extension = request.json['Output File']
     check_types(input_filename_sans_extension, character, pitch_shift, output_filename_sans_extension)
     return input_filename_sans_extension, character, pitch_shift, predict_pitch, float(slice_length), \
-        float(crossfade_length), float(character_likeness), reduce_hoarseness, apply_nsf_hifigan, \
+        float(crossfade_length), float(character_likeness), reduce_hoarseness, apply_nsf_hifigan, noise_scale, \
         output_filename_sans_extension
 
 def check_for_missing_keys():
@@ -194,7 +196,7 @@ def copy_input_audio(input_filename_sans_extension):
 
 
 def execute_program(input_filename_sans_extension, character, pitch_shift, predict_pitch, slice_length,
-                    crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan,):
+                    crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan, noise_scale):
     # todo: redirect stdout to a log file.
     model_path, config_path = get_model_and_config_paths(character)
     inference_path = determine_inference_path(config_path)
@@ -216,7 +218,8 @@ def execute_program(input_filename_sans_extension, character, pitch_shift, predi
         *(['--cluster_model_path', get_cluster_model_path(character)] if character_likeness > 0 else [None, None]),
         *(['--cluster_infer_ratio', str(character_likeness)] if character_likeness > 0 else [None, None]),
         *(['--f0_mean_pooling', superfluous_true] if reduce_hoarseness else [None, None]),
-        *(['--enhance', superfluous_true] if apply_nsf_hifigan else [None, None])
+        *(['--enhance', superfluous_true] if apply_nsf_hifigan else [None, None]),
+        *(['--noice_scale', noise_scale] if noise_scale else [None, None])  # Typo 'noice' is unavoidable. Do not fix it.
     ]
     arguments = [argument for argument in arguments if argument] # Removes all "None" objects in the list.
     subprocess.run([PYTHON_EXECUTABLE, inference_path, *arguments])
