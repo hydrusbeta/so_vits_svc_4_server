@@ -6,7 +6,7 @@
 FROM nvidia/cuda:11.8.0-base-ubuntu20.04
 ENV TZ=Etc/GMT
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
     g++ \
@@ -36,7 +36,7 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --no-cache-dir --upgrade pip 
 # time. See https://docs.docker.com/build/cache
 RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
     --no-cache-dir \
-    --extra-index-url https://download.pytorch.orfrg/whl/cu113 \
+    --extra-index-url https://download.pytorch.org/whl/cu113 \
 	ffmpeg-python \
 	Flask \
 	Flask_Cors \
@@ -67,7 +67,8 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
 # Install the dependencies for the Hay Say interface code
 RUN ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install \
     --no-cache-dir \
-    hay-say-common==0.2.0
+    hay-say-common==1.0.1 \
+    jsonschema==4.19.1
 
 # Download the NSF_HiFiGan model
 RUN mkdir -p ~/hay_say/temp_downloads/nsf_hifigan/ && \
@@ -107,4 +108,4 @@ RUN mv /root/hay_say/temp_downloads/hubert/checkpoint_best_legacy_500.pt ~/hay_s
 RUN git clone https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
 
 # Run the Hay Say interface on startup
-CMD ["/bin/sh", "-c", "/root/hay_say/.venvs/so_vits_svc_4_server/bin/python /root/hay_say/so_vits_svc_4_server/main.py"]
+CMD ["/bin/sh", "-c", "/root/hay_say/.venvs/so_vits_svc_4_server/bin/python /root/hay_say/so_vits_svc_4_server/main.py --cache_implementation file"]
