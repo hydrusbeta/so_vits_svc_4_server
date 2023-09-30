@@ -27,14 +27,15 @@ RUN python3.8 -m venv ~/hay_say/.venvs/so_vits_svc_4; \
 
 # Python virtual environments do not come with wheel, so we must install it. Upgrade pip while
 # we're at it to handle modules that use PEP 517
-RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --no-cache-dir --upgrade pip wheel; \
-    ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install --no-cache-dir --upgrade pip wheel
+RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install --timeout=300 --no-cache-dir --upgrade pip wheel; \
+    ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install --timeout=300 --no-cache-dir --upgrade pip wheel
 
 # Install all python dependencies for so_vits_svc_4
 # Note: This is done *before* cloning the repository because the dependencies are likely to change less often than the
 # so-vits-svc 4.0 code itself. Cloning the repo after installing the requirements helps the Docker cache optimize build
 # time. See https://docs.docker.com/build/cache
 RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
+    --timeout=300 \
     --no-cache-dir \
     --extra-index-url https://download.pytorch.org/whl/cu113 \
 	ffmpeg-python \
@@ -66,6 +67,7 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
 
 # Install the dependencies for the Hay Say interface code
 RUN ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install \
+    --timeout=300 \
     --no-cache-dir \
     hay-say-common==1.0.1 \
     jsonschema==4.19.1

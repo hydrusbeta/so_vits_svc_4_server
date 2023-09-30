@@ -224,7 +224,7 @@ def register_methods(cache):
             *(['--cluster_infer_ratio', str(character_likeness)] if character_likeness > 0 else [None, None]),
             *(['--f0_mean_pooling', superfluous_true] if reduce_hoarseness else [None, None]),
             *(['--enhance', superfluous_true] if apply_nsf_hifigan else [None, None]),
-            *(['--noice_scale', noise_scale] if noise_scale else [None, None])  # Typo 'noice' is unavoidable. Do not fix it.
+            *(['--noice_scale', str(noise_scale)] if noise_scale else [None, None])  # Typo 'noice' is unavoidable. Do not fix it.
         ]
         arguments = [argument for argument in arguments if argument]  # Removes all "None" objects in the list.
         env = select_hardware(gpu_id)
