@@ -69,7 +69,7 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
 RUN ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay-say-common==1.0.1 \
+    hay-say-common==1.0.2 \
     jsonschema==4.19.1
 
 # Download the NSF_HiFiGan model
