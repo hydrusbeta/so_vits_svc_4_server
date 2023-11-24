@@ -5,7 +5,7 @@
 # 3.5 through 9.0
 FROM nvidia/cuda:11.8.0-base-ubuntu20.04
 ENV TZ=Etc/GMT
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone.
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
@@ -69,7 +69,7 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
 RUN ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay-say-common==1.0.2 \
+    hay-say-common==1.0.7 \
     jsonschema==4.19.1
 
 # Download the NSF_HiFiGan model
@@ -107,7 +107,7 @@ RUN mv /root/hay_say/temp_downloads/hubert/checkpoint_best_legacy_500.pt ~/hay_s
     ln -s ~/hay_say/so_vits_svc_4/hubert/checkpoint_best_legacy_500.pt ~/hay_say/so_vits_svc_4/pretrain/
 
 # Download the Hay Say Interface code
-RUN git clone https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
+RUN git clone -b main --single-branch https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
 
 # Run the Hay Say interface on startup
 CMD ["/bin/sh", "-c", "/root/hay_say/.venvs/so_vits_svc_4_server/bin/python /root/hay_say/so_vits_svc_4_server/main.py --cache_implementation file"]

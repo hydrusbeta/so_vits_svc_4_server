@@ -58,6 +58,10 @@ def register_methods(cache):
 
         return json.dumps(response, sort_keys=True, indent=4), code
 
+    @app.route('/gpu-info', methods=['GET'])
+    def get_gpu_info():
+        return get_gpu_info_from_another_venv(PYTHON_EXECUTABLE)
+
     def parse_inputs():
         schema = {
             'type': 'object',
@@ -224,7 +228,7 @@ def register_methods(cache):
             *(['--cluster_infer_ratio', str(character_likeness)] if character_likeness > 0 else [None, None]),
             *(['--f0_mean_pooling', superfluous_true] if reduce_hoarseness else [None, None]),
             *(['--enhance', superfluous_true] if apply_nsf_hifigan else [None, None]),
-            *(['--noice_scale', str(noise_scale)] if noise_scale else [None, None])  # Typo 'noice' is unavoidable. Do not fix it.
+            *(['--noice_scale', str(noise_scale)] if noise_scale else [None, None])  # Do not correct the typo 'noice'. RVC's code expects it.
         ]
         arguments = [argument for argument in arguments if argument]  # Removes all "None" objects in the list.
         env = select_hardware(gpu_id)
