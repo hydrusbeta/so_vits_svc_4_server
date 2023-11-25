@@ -5,15 +5,15 @@ import os.path
 import subprocess
 import traceback
 
+import hay_say_common as hsc
 import jsonschema
 import soundfile
 from flask import Flask, request
-from hay_say_common import *
 from hay_say_common.cache import Stage
 from jsonschema import ValidationError
 
 ARCHITECTURE_NAME = 'so_vits_svc_4'
-ARCHITECTURE_ROOT = os.path.join(ROOT_DIR, ARCHITECTURE_NAME)
+ARCHITECTURE_ROOT = os.path.join(hsc.ROOT_DIR, ARCHITECTURE_NAME)
 
 RAW_COPY_FOLDER = os.path.join(ARCHITECTURE_ROOT, 'raw')
 OUTPUT_COPY_FOLDER = os.path.join(ARCHITECTURE_ROOT, 'results')
@@ -21,9 +21,9 @@ INFERENCE_TEMPLATE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main_templa
 INFERENCE_CODE_PATH = os.path.join(ARCHITECTURE_ROOT, 'inference_main.py')
 TEMP_FILE_EXTENSION = '.flac'
 
-INFERENCE_CODE_PATH_FOR_4_DOT_1_STABLE = os.path.join(ROOT_DIR, 'so_vits_svc_4_dot_1_stable', 'inference_main.py')
+INFERENCE_CODE_PATH_FOR_4_DOT_1_STABLE = os.path.join(hsc.ROOT_DIR, 'so_vits_svc_4_dot_1_stable', 'inference_main.py')
 
-PYTHON_EXECUTABLE = os.path.join(ROOT_DIR, '.venvs', 'so_vits_svc_4', 'bin', 'python')
+PYTHON_EXECUTABLE = os.path.join(hsc.ROOT_DIR, '.venvs', 'so_vits_svc_4', 'bin', 'python')
 
 app = Flask(__name__)
 
@@ -42,13 +42,13 @@ def register_methods(cache):
                             crossfade_length, character_likeness, reduce_hoarseness, apply_nsf_hifigan, noise_scale,
                             gpu_id)
             copy_output(output_filename_sans_extension, session_id)
-            clean_up(get_temp_files())
+            hsc.clean_up(get_temp_files())
         except BadInputException:
             code = 400
             message = traceback.format_exc()
         except Exception:
             code = 500
-            message = construct_full_error_message(ARCHITECTURE_ROOT, get_temp_files())
+            message = hsc.construct_full_error_message(ARCHITECTURE_ROOT, get_temp_files())
 
         # The message may contain quotes and curly brackets which break JSON syntax, so base64-encode the message.
         message = base64.b64encode(bytes(message, 'utf-8')).decode('utf-8')
@@ -60,7 +60,7 @@ def register_methods(cache):
 
     @app.route('/gpu-info', methods=['GET'])
     def get_gpu_info():
-        return get_gpu_info_from_another_venv(PYTHON_EXECUTABLE)
+        return hsc.get_gpu_info_from_another_venv(PYTHON_EXECUTABLE)
 
     def parse_inputs():
         schema = {
@@ -123,7 +123,7 @@ def register_methods(cache):
         pass
 
     def get_model_and_config_paths(character):
-        character_dir = get_model_path(ARCHITECTURE_NAME, character)
+        character_dir = hsc.character_dir(ARCHITECTURE_NAME, character)
         model_filename, config_filename = get_model_and_config_filenames(character_dir)
         model_path = os.path.join(character_dir, model_filename)
         config_path = os.path.join(character_dir, config_filename)
@@ -151,7 +151,7 @@ def register_methods(cache):
             return potential_names[0]
 
     def get_speaker(character):
-        character_dir = get_model_path(ARCHITECTURE_NAME, character)
+        character_dir = hsc.character_dir(ARCHITECTURE_NAME, character)
         config_filename = get_config_filename(character_dir)
         with open(config_filename, 'r') as file:
             config_json = json.load(file)
@@ -161,7 +161,7 @@ def register_methods(cache):
 
     def get_cluster_model_path(character):
         # todo: Allow for the possibility of multiple kmeans models
-        character_dir = get_model_path(ARCHITECTURE_NAME, character)
+        character_dir = hsc.character_dir(ARCHITECTURE_NAME, character)
         potential_names = [file for file in os.listdir(character_dir) if file.startswith('kmeans')]
         if len(potential_names) == 0:
             raise Exception('Cluster model was not found! Expected a file with the name kmeans_<number>.pt in '
@@ -231,7 +231,7 @@ def register_methods(cache):
             *(['--noice_scale', str(noise_scale)] if noise_scale else [None, None])  # Do not correct the typo 'noice'. RVC's code expects it.
         ]
         arguments = [argument for argument in arguments if argument]  # Removes all "None" objects in the list.
-        env = select_hardware(gpu_id)
+        env = hsc.select_hardware(gpu_id)
         subprocess.run([PYTHON_EXECUTABLE, inference_path, *arguments], env=env)
 
     def determine_inference_path(config_path):
@@ -245,7 +245,7 @@ def register_methods(cache):
     def copy_output(output_filename_sans_extension, session_id):
         filename = get_output_filename()
         source_path = os.path.join(OUTPUT_COPY_FOLDER, filename)
-        array_output, sr_output = read_audio(source_path)
+        array_output, sr_output = hsc.read_audio(source_path)
         cache.save_audio_to_cache(Stage.OUTPUT, session_id, output_filename_sans_extension, array_output, sr_output)
 
     def get_output_filename():
@@ -256,7 +256,7 @@ def register_methods(cache):
             message = 'More than one file was found in ' + OUTPUT_COPY_FOLDER + '! Please alert the maintainers of ' \
                       'Hay Say; they should be cleaning that directory every time output is generated. '
             try:
-                clean_up(get_temp_files())
+                hsc.clean_up(get_temp_files())
             except Exception as e:
                 raise Exception(message + 'An attempt was made to clean the directory to correct this situation, but '
                                           'the operation failed.') from e
@@ -275,13 +275,13 @@ def register_methods(cache):
 def parse_arguments():
     parser = argparse.ArgumentParser(prog='main.py',
                                      description='A webservice interface for voice conversion with so-vits-svc 4.0')
-    parser.add_argument('--cache_implementation', default='file', choices=cache_implementation_map.keys(),
+    parser.add_argument('--cache_implementation', default='file', choices=hsc.cache_implementation_map.keys(),
                         help='Selects an implementation for the audio cache, e.g. saving them to files or to a database.')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_arguments()
-    cache = select_cache_implementation(args.cache_implementation)
+    cache = hsc.select_cache_implementation(args.cache_implementation)
     register_methods(cache)
     app.run(host='0.0.0.0', port=6576)
