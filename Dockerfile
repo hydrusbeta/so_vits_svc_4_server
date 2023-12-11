@@ -87,22 +87,22 @@ RUN ~/hay_say/.venvs/so_vits_svc_4/bin/pip install \
 RUN ~/hay_say/.venvs/so_vits_svc_4_server/bin/pip install \
     --timeout=300 \
     --no-cache-dir \
-    hay-say-common==1.0.7 \
+    hay-say-common==1.0.8 \
     jsonschema==4.19.1
 
-# Clone so_vits_svc_4 and checkout a specific commit that is known to work with this docker
+# Clone so_vits_svc_4 v1 and checkout a specific commit that is known to work with this docker
 # file and with Hay Say
 RUN git clone -b Moe-SVC --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4
 WORKDIR $HOME_DIR/hay_say/so_vits_svc_4
-RUN git reset --hard 153083eca42c3d17b77e20821724eced1cc49c40
+RUN git reset --hard 153083eca42c3d17b77e20821724eced1cc49c40 # Jun 13, 2023
 
-# Also Clone the 4.1-Stable branch for models that require it
+# Also Clone so_vits_svc_4 v2
 RUN git clone -b 4.1-Stable --single-branch -q https://github.com/svc-develop-team/so-vits-svc ~/hay_say/so_vits_svc_4_dot_1_stable
 WORKDIR $HOME_DIR/hay_say/so_vits_svc_4_dot_1_stable
-RUN git reset --hard 301c67b3175bf00de7bfaf26d2ab65123e3ca3c4
+RUN git reset --hard 730930d337d171479eadf305f96cbed4bb393e77 # Oct 3, 2023
 
 # Clone the Hay Say Interface code
-RUN git clone -b database-cache --single-branch https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
+RUN git clone -b main --single-branch https://github.com/hydrusbeta/so_vits_svc_4_server ~/hay_say/so_vits_svc_4_server/
 
 # Expose port 6576, the port that Hay Say uses for so_vits_svc_4
 EXPOSE 6576
